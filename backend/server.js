@@ -55,6 +55,21 @@ const { profile } = req.body; if (!profile) return res.status(400).json({ error:
 await setProfile(profile); res.json({ ok: true });
 });
 
+// Merge new answers/FAQs into profile JSON
+app.post('/api/profile/answers', async (req, res) => {
+  try {
+    const { answers = {}, faqs = {} } = req.body || {};
+    const row = await getProfile();
+    const profile = JSON.parse(row.json || '{}');
+    profile.answers = { ...(profile.answers || {}), ...answers };
+    profile.faqs    = { ...(profile.faqs || {}), ...faqs };
+    await setProfile(profile);
+    res.json({ ok: true, profile });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 
 // Merge new answers/faqs into profile
 app.post('/api/profile/answers', async (req, res) => {

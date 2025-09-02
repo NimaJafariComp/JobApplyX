@@ -1,148 +1,167 @@
+// NON-MODULE / IIFE
 (function () {
-  const { extractQuestions, fillText, selectChoice, log, sleep, text } =
-    window.JAX;
+  const { sleep } = window.JAX;
   const api = (window.JobApplyX = window.JobApplyX || {});
 
-  api.autoFillGeneric = async function ({ backend, jobDesc = "" }) {
-    const qs = extractQuestions(document);
-    const questions = qs.map((q) => ({ question: q.label }));
-    let answers = [];
-    try {
-      const r = await fetch(`${backend}/api/qa`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questions, job_desc: jobDesc }),
-      });
-      const data = await r.json();
-      answers = data.answers || [];
-    } catch (e) {
-      log("qa error", e);
-    }
+  const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const isVisible = (el) => el && el.offsetParent !== null && getComputedStyle(el).visibility !== 'hidden';
+  const isSelectPlaceholder = (el) => {
+    if (el.tagName.toLowerCase() !== 'select') return false;
+    const sel = el.selectedOptions && el.selectedOptions[0];
+    const t = norm(sel?.text || '');
+    return !t || /select|choose|--/i.test(sel?.text || '');
+  };
+  const isEmpty = (el) => {
+    if (!isVisible(el) || el.disabled || el.readOnly) return false; // treat as already handled
+    const tag = el.tagName.toLowerCase();
+    const type = (el.type || '').toLowerCase();
+    if (['button','submit','reset','search','hidden','file'].includes(type)) return false;
+    if (['checkbox','radio'].includes(type)) return !el.checked;
+    if (tag === 'select') return isSelectPlaceholder(el);
+    return !(el.value || '').trim();
+  };
+  const labelFor = (el, root) =>
+    el.getAttribute('aria-label') ||
+    (el.id && (root.querySelector(`label[for="${el.id}"]`)?.innerText || '')) ||
+    el.placeholder || '';
 
-    const missing = [];
-    for (let i = 0; i < qs.length; i++) {
-      const a = answers[i];
-      const q = qs[i];
-      if (!a || a.needs_user || !a.answer) {
-        missing.push({ label: q.label, type: q.type });
-        continue;
-      }
-      if (
-        q.type === "text" ||
-        q.type === "email" ||
-        q.type === "tel" ||
-        q.type === "textarea"
-      )
-        fillText(q.el, a.answer);
-      else selectChoice(q.el, a.answer);
-      await sleep(60);
-    }
-    return { missing };
+  const fillText = (el, val) => {
+    el.focus();
+    el.value = String(val);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  const selectByText = (el, val) => {
+    if (!el || el.tagName.toLowerCase() !== 'select') return false;
+    const want = norm(val);
+    const opts = Array.from(el.options);
+    let idx = opts.findIndex(o => norm(o.text) === want);
+    if (idx < 0) idx = opts.findIndex(o => norm(o.text).includes(want));
+    if (idx >= 0) { el.selectedIndex = idx; el.dispatchEvent(new Event('change', { bubbles: true })); return true; }
+    return false;
   };
 
-  api.ensureCoverLetterPdfAndPrompt = async function ({
-    backend,
-    role = "",
-    company = "",
-    jobDesc = "",
-  }) {
-    const fileInputs = Array.from(
-      document.querySelectorAll('input[type="file"]')
-    ).filter((i) => i.offsetParent !== null);
-    const match = fileInputs.find((inp) => {
-      const lbl =
-        inp.getAttribute("aria-label") ||
-        (inp.id &&
-          (document.querySelector(`label[for="${inp.id}"]`)?.innerText || "")) ||
-        "";
-      const near = inp.closest("label,div,section");
-      const nearText = ((near ? near.innerText : "") + " " + lbl).toLowerCase();
-      return nearText.includes("cover letter");
-    });
-    const hasDropZone = Array.from(document.querySelectorAll("*")).some(
-      (el) =>
-        el.offsetParent !== null &&
-        /cover\s?letter/i.test(text(el)) &&
-        /upload|attach|drop|drag/i.test(text(el))
-    );
-    if (!match && !hasDropZone) return false;
-
-    try {
-      const r = await fetch(`${backend}/api/cover-letter-pdf`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role, company, job_desc: jobDesc }),
-      });
-      const blob = await r.blob();
-      const fname = `CoverLetter-${(company || "Company")
-        .replace(/[^a-z0-9]+/gi, "_")}-${(role || "Role").replace(
-        /[^a-z0-9]+/gi,
-        "_"
-      )}.pdf`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fname;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-        a.remove();
-      }, 2000);
-
-      if (window.JobApplyXOverlay) {
-        await window.JobApplyXOverlay.notice(
-          `This application requires a <b>cover letter PDF</b> upload. I generated <code>${fname}</code> and downloaded it for you. Please <b>attach that file</b> now, then click <b>Continue</b>.`
-        );
-      }
-      return true;
-    } catch (e) {
-      log("cover-letter pdf error", e);
-      return false;
+  function profileGuess(label, profile) {
+    const L = norm(label);
+    if (!profile) return null;
+    if (L.includes('email')) return profile.email || null;
+    if (L.includes('phone') && !L.includes('code')) return profile.phone || null;
+    if (/(first name|given name)/i.test(label)) return (profile.name || '').trim().split(/\s+/)[0] || null;
+    if (/(last name|family name|surname)/i.test(label)) {
+      const parts = (profile.name || '').trim().split(/\s+/);
+      return parts.length > 1 ? parts[parts.length - 1] : null;
     }
-  };
+    if (/(city|location)/i.test(label)) return profile.location || null;
+    if (/authorized to work/i.test(label))
+      return profile.answers?.authorized_to_work_us === true ? 'Yes' :
+             profile.answers?.authorized_to_work_us === false ? 'No' : null;
+    if (/visa|sponsorship/i.test(label))
+      return profile.answers?.requires_visa === true ? 'Yes' :
+             profile.answers?.requires_visa === false ? 'No' : null;
+    if (/years.*experience/i.test(label)) return String(profile.answers?.years_experience || '');
+    if (/language/i.test(label)) return 'English';
+    if (/country code/i.test(label)) {
+      const ph = String(profile.phone || '');
+      if (/^\+?1/.test(ph) || /united states|usa|u\.s\./i.test(profile.location || '')) return 'United States (+1)';
+    }
+    // FAQs (free-form Q→A saved from past prompts)
+    const faqs = profile.faqs || {};
+    for (const [q, a] of Object.entries(faqs)) {
+      if (norm(q) === L) return a;
+    }
+    return null;
+  }
 
-  api.persistAnswersToProfile = async function ({
-    backend,
-    answersMap = {},
-    faqsMap = {},
-  }) {
+  // persist new Q→A (for auto-fill next time)
+  api.persistAnswersToProfile = async function ({ backend, faqsMap = {} }) {
     try {
       await fetch(`${backend}/api/profile/answers`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          answers: {},
-          faqs: Object.keys(faqsMap).length ? faqsMap : answersMap,
-        }),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ faqs: faqsMap })
       });
-    } catch (e) {
-      log("persist answers error", e);
-    }
+    } catch {}
   };
 
-  api.queueMissing = async function ({
-    backend,
-    missing = [],
-    role = "",
-    company = "",
-    jobDesc = "",
-  }) {
-    try {
-      await fetch(`${backend}/api/queue`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          site: location.hostname,
-          job_url: location.href,
-          job_title: role,
-          company,
-          job_desc: jobDesc,
-          missing,
-        }),
-      });
-    } catch (e) {
-      log("queue error", e);
+  // MAIN: only handle *empty* inputs inside the modal; use profile → LLM; prompt only if truly unknown
+  api.autoFillGeneric = async function ({ backend, jobDesc = '', root = document }) {
+    const scope = root || document;
+
+    // 1) collect ONLY EMPTY inputs inside modal
+    const inputs = Array.from(scope.querySelectorAll('input, textarea, select')).filter(isVisible);
+    const qs = [];
+    const seen = new Set();
+    for (const el of inputs) {
+      if (!isEmpty(el)) continue;                 // <<< ignore prefilled / disabled / hidden
+      const label = labelFor(el, scope);
+      if (!label.trim()) continue;
+      const key = norm(label);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const type = el.tagName.toLowerCase() === 'select' ? 'select' : (el.type || 'text');
+      qs.push({ el, label, type });
     }
+    if (!qs.length) return { missing: [] };
+
+    // 2) get profile once
+    let profile = api._profile;
+    if (!profile) {
+      try {
+        const { profile: p } = await fetch(`${backend}/api/profile`).then(r => r.json());
+        api._profile = profile = p || {};
+      } catch { profile = {}; }
+    }
+
+    // 3) pass 1: profile/FAQ fills (no LLM)
+    const askLLM = [];
+    for (const q of qs) {
+      const guess = profileGuess(q.label, profile);
+      if (guess != null && String(guess).trim()) {
+        if (q.type === 'select') {
+          if (!selectByText(q.el, guess)) askLLM.push(q); // couldn't match option; try LLM
+        } else {
+          fillText(q.el, guess);
+        }
+      } else {
+        askLLM.push(q);
+      }
+      await sleep(25);
+    }
+    if (!askLLM.length) return { missing: [] };
+
+    // 4) pass 2: LLM for the still-empty
+    let llmAnswers = [];
+    try {
+      const r = await fetch(`${backend}/api/qa`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questions: askLLM.map(({ label }) => ({ question: label })),
+          job_desc: jobDesc
+        })
+      });
+      const data = await r.json();
+      llmAnswers = Array.isArray(data.answers) ? data.answers : [];
+    } catch {}
+
+    // 5) apply LLM answers; only prompt for truly unknowns / unmatchable selects
+    const needUser = [];
+    for (let i = 0; i < askLLM.length; i++) {
+      const q = askLLM[i];
+      const a = llmAnswers[i] || {};
+      const val = (a.needs_user ? '' : a.answer) || '';
+      if (val) {
+        if (q.type === 'select') {
+          if (!selectByText(q.el, val)) needUser.push({ label: q.label, type: q.type });
+        } else {
+          fillText(q.el, val);
+        }
+      } else {
+        needUser.push({ label: q.label, type: q.type, needs_user: true });
+      }
+      await sleep(25);
+    }
+
+    return { missing: needUser }; // overlay will be asked only for these
   };
 })();
