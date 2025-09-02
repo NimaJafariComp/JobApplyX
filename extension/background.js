@@ -21,3 +21,6 @@ chrome.storage.sync.get(STATE_KEY).then(v => sendResponse(v[STATE_KEY]));
 return true; // async
 }
 });
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg?.type === 'JOBAPPLYX_PING') { sendResponse({ ok: true }); return true; }
+});
