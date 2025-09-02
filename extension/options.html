@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>JobApplyX Options</title>
+<style>
+body{font-family:ui-sans-serif,system-ui;margin:20px;max-width:720px}
+label{display:block;margin:10px 0 4px}
+input,textarea{width:100%;padding:10px;border:1px solid #ddd;border-radius:10px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn{margin-top:14px;padding:10px 14px;border:1px solid #ddd;border-radius:10px;cursor:pointer}
+.card{border:1px solid #eee;border-radius:12px;padding:10px;margin-top:12px}
+</style>
+</head>
+<body>
+<h2>JobApplyX — Options</h2>
+<label>Backend URL</label>
+<input id="backend" placeholder="http://localhost:3001" />
+<div class="row">
+<div>
+<label>Target roles (comma‑separated)</label>
+<input id="roles" placeholder="software engineer, frontend developer" />
+</div>
+<div>
+<label>Locations (optional, comma‑separated)</label>
+<input id="locations" placeholder="Remote, San Francisco" />
+</div>
+</div>
+<label>Profile JSON (advanced)</label>
+<textarea id="profile" rows="10" placeholder='{"name":"Jane Doe","email":"jane@…","phone":"…","location":"…","skills":["React","Node"],"work_history":[…],"answers":{"authorized_to_work_us":true,"requires_visa":false}}'></textarea>
+<div class="card">
+<b>Resume text (stored server‑side)</b>
+<textarea id="resume" rows="8" placeholder="Paste your resume text here if not uploading PDF."></textarea>
+<button id="uploadResume" class="btn">Save resume text</button>
+</div>
+<button id="save" class="btn">Save settings</button>
+<script src="options.js"></script>
+</body>
+</html>

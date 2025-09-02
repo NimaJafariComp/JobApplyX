@@ -1,0 +1,36 @@
+{
+"manifest_version": 3,
+"name": "JobApplyX — Auto Apply",
+"version": "1.2.0",
+"description": "Auto-find and apply to jobs (LinkedIn, Indeed, ZipRecruiter) using a local Ollama model.",
+"permissions": ["storage", "activeTab", "scripting"],
+"host_permissions": [
+"http://localhost:3001/*",
+"https://*.indeed.com/*",
+"https://*.ziprecruiter.com/*",
+"https://*.linkedin.com/*"
+],
+"action": { "default_title": "JobApplyX", "default_popup": "popup.html" },
+"options_page": "options.html",
+"background": { "service_worker": "background.js" },
+"content_scripts": [
+{
+"matches": [
+"https://*.indeed.com/*",
+"https://*.ziprecruiter.com/*",
+"https://*.linkedin.com/jobs/*"
+],
+"js": [
+"content/common.js",
+"content/overlay.js",
+"content/formFiller.js",
+"content/sites/indeed.js",
+"content/sites/ziprecruiter.js",
+"content/sites/linkedin.js",
+"content/runner.js"
+],
+"css": ["content/overlay.css"],
+"run_at": "document_idle"
+}
+]
+}

@@ -1,0 +1,6 @@
+#jobapplyx-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;z-index:2147483647;}
+#jobapplyx-overlay .panel{position:absolute;right:24px;bottom:24px;width:360px;background:#fff;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.2);padding:14px;font-family:ui-sans-serif,system-ui}
+#jobapplyx-overlay .panel h3{margin:6px 0 12px}
+#jobapplyx-overlay .q{margin:8px 0}
+#jobapplyx-overlay input, #jobapplyx-overlay textarea{width:100%;padding:8px;border:1px solid #ddd;border-radius:10px}
+#jobapplyx-overlay button{padding:8px 12px;border:1px solid #ddd;border-radius:10px;background:#111;color:#fff;cursor:pointer}
