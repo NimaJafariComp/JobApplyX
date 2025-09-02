@@ -1,0 +1,25 @@
+
+
+Payment Acceptance - Receipt
+Receipt
+Date: 08-31-2025
+Order Number: 9084046993_1756698642073
+Billing Information
+Mohammadnima Jafari
+18528 mayall st unit G
+northridge
+California
+91324
+United States of America
+Payment Details
+Card Type
+Mastercard
+Card Number
+xxxxxxxxxxxx3937
+Expiration Date
+08-2030
+Total amount
+$52.14
+Please keep a copy of this receipt for your records
+Print
+Return to Website
