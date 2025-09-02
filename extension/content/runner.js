@@ -2,8 +2,11 @@
   const { sleep, log } = window.JAX;
   const Sites = window.JobApplyXSites || {};
   const STATE_KEY = "jobapplyx_state";
+
   let enabled = false;
   let backend = "http://localhost:3001";
+  let busy = false;
+  const visited = new Set(); // URLs we've already considered this session
 
   async function getState() {
     return await new Promise((resolve) =>
@@ -21,29 +24,37 @@
   async function loop() {
     while (enabled) {
       const site = currentSite();
-      if (!site) {
-        await sleep(1500);
-        continue;
-      }
+      if (!site) { await sleep(1200); continue; }
+
       try {
         const state = await getState();
         backend = state.backend || backend;
-        const prof = await fetch(`${backend}/api/profile`).then((r) => r.json());
-        const roles = prof.profile?.roles || [];
+
+        const profResp = await fetch(`${backend}/api/profile`).then(r=>r.json());
+        const profile = profResp.profile || {};
+        const threshold =
+          Number(profile.apply_threshold) ||
+          Number(profile?.answers?.apply_threshold) ||
+          60;
+
+        if (busy) { await sleep(500); continue; }
 
         if (site.isListingPage()) {
-          await site.scanAndOpenEasyApply(roles);
+          busy = true;
+          const opened = await site.scanAndOpenEasyApply({ profile, backend, threshold, visited });
+          busy = !!opened;
         } else {
-          const done = await site.applyIfEasy({ backend });
-          if (done) {
-            history.back();
-            await sleep(1200);
-          }
+          busy = true;
+          const done = await site.applyIfEasy({ backend, profile, threshold, visited });
+          busy = false;
+          if (done) { history.back(); await sleep(1200); }
         }
       } catch (e) {
         log("Runner error", e);
+        busy = false;
       }
-      await sleep(1200 + Math.random() * 800);
+
+      await sleep(600 + Math.random() * 700);
     }
   }
 
@@ -55,8 +66,7 @@
   });
 
   getState().then((s) => {
-    enabled = !!s.enabled;
-    backend = s.backend || backend;
+    enabled = !!s.enabled; backend = s.backend || backend;
     if (enabled) loop();
   });
 })();

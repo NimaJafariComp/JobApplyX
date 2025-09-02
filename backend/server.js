@@ -7,6 +7,9 @@ import { chat, generate } from './ollama.js';
 import { SYSTEM_PROFILE_SUMMARY, coverLetterPrompt, qaPrompt, extractJobFactsPrompt } from './prompts.js';
 import { parsePdfToText } from './resumeParser.js';
 import { makeCoverLetterPdfStream } from './coverLetterPdf.js';
+import { matchScorePrompt } from './prompts.js';
+import { addAppliedLog, listAppliedLogs } from './storage.js';
+
 
 
 dotenv.config();
@@ -74,6 +77,35 @@ text = isPdf ? await parsePdfToText(req.file.buffer) : req.file.buffer.toString(
 else { return res.status(400).json({ error: 'Upload a PDF or send {text}' }); }
 await setResumeText(text); res.json({ ok: true, chars: text.length });
 } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Match score (resume/profile vs job)
+app.post('/api/match', async (req, res) => {
+  try {
+    const { job_desc = '' } = req.body || {};
+    const row = await getProfile();
+    const profile = JSON.parse(row.json);
+    const resumeText = row.resume_text || '';
+    const prompt = matchScorePrompt({ profile, resumeText, jobDesc: job_desc });
+    const response = await generate(prompt, {});
+    let parsed = {};
+    try { parsed = JSON.parse(response); } catch {}
+    res.json({ score: Number(parsed.score) || 0, details: parsed });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Applied logs
+app.post('/api/logs/applied', async (req, res) => {
+  try {
+    const { site, job_url, job_title, company, match_score } = req.body || {};
+    if (!site || !job_url) return res.status(400).json({ error: 'site and job_url required' });
+    await addAppliedLog({ site, job_url, job_title, company, match_score });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/logs/applied', async (req, res) => {
+  const items = await listAppliedLogs(200);
+  res.json({ items });
 });
 
 

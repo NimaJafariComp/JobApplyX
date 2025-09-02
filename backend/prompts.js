@@ -22,3 +22,17 @@ PROFILE: ${JSON.stringify(profile)}\nRESUME: ${resumeText}\nJOB DESCRIPTION: ${j
 export function extractJobFactsPrompt(jobText) {
 return `From the following job posting text, extract JSON with {"role":"","company":"","easy_apply_likelihood":0..1}. If unknown, leave empty string or 0. Return JSON only.\n\n${jobText}`;
 }
+export function matchScorePrompt({ profile, resumeText, jobDesc }) {
+  return `You are matching a candidate's resume/profile to a job description. 
+Return STRICT JSON ONLY like: {"score": 0-100, "matched": ["skill1",...], "missing": ["skillX",...], "summary": "one sentence"}.
+
+PROFILE JSON:
+${JSON.stringify(profile)}
+
+RESUME:
+${resumeText}
+
+JOB DESCRIPTION:
+${jobDesc}
+`;
+}

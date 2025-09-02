@@ -4,3 +4,11 @@
 #jobapplyx-overlay .q{margin:8px 0}
 #jobapplyx-overlay input, #jobapplyx-overlay textarea{width:100%;padding:8px;border:1px solid #ddd;border-radius:10px}
 #jobapplyx-overlay button{padding:8px 12px;border:1px solid #ddd;border-radius:10px;background:#111;color:#fff;cursor:pointer}
+#jobapplyx-meter{
+  position:fixed; right:24px; bottom:24px;
+  background:#111; color:#fff; font-family:ui-sans-serif,system-ui;
+  font-size:13px; padding:8px 10px; border-radius:12px; z-index:2147483647;
+  box-shadow:0 8px 24px rgba(0,0,0,.2); display:none; pointer-events:none;
+}
+#jobapplyx-meter.ok{ background:#0a7f2e; }
+#jobapplyx-meter.skip{ background:#8a1124; }

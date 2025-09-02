@@ -51,3 +51,21 @@
     },
   };
 })();
+// Lightweight, non-blocking match meter
+(function(){
+  if (window.JobApplyXMeter) return;
+  const meter = document.createElement('div');
+  meter.id = 'jobapplyx-meter';
+  document.documentElement.appendChild(meter);
+
+  window.JobApplyXMeter = {
+    show({ score, threshold, action }) {
+      meter.className = action === 'apply' ? 'ok' : 'skip';
+      meter.textContent = `Match: ${Math.round(score)}%  (min ${threshold}%)  — ${action.toUpperCase()}`;
+      meter.style.display = 'block';
+      clearTimeout(meter._t);
+      meter._t = setTimeout(()=>{ meter.style.display='none'; }, 1800);
+    }
+  };
+})();
+
