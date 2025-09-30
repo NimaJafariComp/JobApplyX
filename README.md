@@ -1,6 +1,5 @@
 # JobApplyX
 ML powered auto Job apply
-Here’s a **ready-to-paste README.md** with structure, explanation, config, and installation for **JobApplyX v1.2**.
 
 ---
 
